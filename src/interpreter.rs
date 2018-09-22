@@ -47,7 +47,7 @@ impl Interpreter {
 				},
 				AddData(val) => {
 					let data_index = self.get_data_index()?;
-					self.data_memory[data_index] = (self.data_memory[data_index] as i8 as isize).wrapping_add(*val) as u8;
+					self.data_memory[data_index] = (self.data_memory[data_index] as i8).wrapping_add(*val) as u8;
 				},
 				Input => {
 					let stdin = stdin();

@@ -19,7 +19,7 @@ pub enum Direction {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Instruction {
 	AddPointer(isize),
-	AddData(isize),
+	AddData(i8),
 	Input,
 	Output,
 	Jump{ index: usize, direction: Direction }

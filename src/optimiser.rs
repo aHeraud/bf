@@ -24,7 +24,7 @@ fn merge_instructions(mut program: Vec<Instruction>) -> Vec<Instruction> {
 					instructions.push(AddPointer(a + b));
 				},
 				(AddData(a), AddData(b)) => {
-					instructions.push(AddData(a + b));
+					instructions.push(AddData(a.wrapping_add(b)));
 				},
 				(_, Jump{ index, direction }) => {
 					instructions.push(last);
@@ -81,6 +81,13 @@ mod test {
 
 		let result = merge_instructions(vec![AddData(1), AddData(-1), AddData(1)]);
 		assert_eq!(result, vec![AddData(1)]);
+	}
+
+	#[test]
+	fn merge_2_wrapping_add_data_ins() {
+		use Instruction::*;
+		let result = merge_instructions(vec![AddData(1), AddData(-1), AddData(-1)]);
+		assert_eq!(result, vec![AddData(-1)]);
 	}
 
 	#[test]
