@@ -1,23 +1,22 @@
 use std::io::{stdin, Read};
-use super::{Program, Instruction, Direction};
+use super::{Instruction, Direction};
 
 const MEMORY_SIZE: usize = 30000;
 
 #[derive(Clone, Copy, Debug)]
 pub enum InterpreterError {
 	DataIndexOutOfBounds{ index: isize, array_size: usize },
-	InvalidJump
 }
 
 pub struct Interpreter {
-	program: Program,
+	program: Vec<Instruction>,
 	data_memory: Box<[u8]>,
 	data_pointer: isize,
 	instruction_pointer: isize
 }
 
 impl Interpreter {
-	pub fn new(program: Program) -> Interpreter {
+	pub fn new(program: Vec<Instruction>) -> Interpreter {
 		Interpreter {
 			program: program,
 			data_memory: Box::new([0; MEMORY_SIZE]),
@@ -41,7 +40,7 @@ impl Interpreter {
 		use self::Instruction::*;
 
 		// TODO: should the data pointer wrap?
-		if let Some(ref instruction) = self.program.instructions.get(self.instruction_pointer as usize) {
+		if let Some(ref instruction) = self.program.get(self.instruction_pointer as usize) {
 			match instruction {
 				AddPointer(val) => {
 					self.data_pointer += *val;
@@ -61,15 +60,10 @@ impl Interpreter {
 					let index = self.get_data_index()?;
 					print!("{}", self.data_memory[index] as char);
 				},
-				Jump{ id: _, target_id, direction } => {
+				Jump{ index, direction } => {
 					let cell_value = self.data_memory[self.get_data_index()?];
 					if ((*direction == Direction::Forward) && cell_value == 0) || ((*direction == Direction::Backward) && cell_value != 0) {
-						if let Some(index) = self.program.map.get(target_id) {
-							self.instruction_pointer = *index as isize;
-						}
-						else {
-							return Err(InterpreterError::InvalidJump);
-						}
+						self.instruction_pointer = *index as isize - 1; // sub 1 from index so when instruction_pointer is incremented it points to the right index
 					}
 				}
 			}

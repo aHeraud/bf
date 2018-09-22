@@ -1,7 +1,7 @@
 use std::vec::Vec;
 use std::collections::HashMap;
 
-use super::{Program, Instruction, Direction};
+use super::{Instruction, Direction};
 
 #[derive(Clone, Copy)]
 struct ParsePosition {
@@ -21,13 +21,11 @@ impl ParsePosition {
 	}
 }
 
-pub fn parse<'a>(program: &'a str) -> Result<Program, Vec<String>> {
+pub fn parse<'a>(program: &'a str) -> Result<Vec<Instruction>, Vec<String>> {
 	use self::Instruction::*;
 
 	let mut instructions = Vec::new();
-	let mut map = HashMap::new(); // maps jump ids to indexes in the instruction vector
-	let mut stack: Vec<(isize, usize, ParsePosition)> = Vec::new();
-	let mut id_counter = 1;
+	let mut jump_stack: Vec<(usize, usize, ParsePosition)> = Vec::new();
 
 	let mut parse_position = ParsePosition::new();
 	for (char_index, c) in program.char_indices() {
@@ -40,29 +38,20 @@ pub fn parse<'a>(program: &'a str) -> Result<Program, Vec<String>> {
 			'.' => instructions.push(Output),
 			'[' => {
 				let index = instructions.len();
-				let id = id_counter;
-				instructions.push(Jump{ id: id, target_id: -1, direction: Direction::Forward });
-				map.insert(id, index);
-				stack.push((id, char_index, parse_position));
-				id_counter += 1;
+				instructions.push(Jump{ index: 0, direction: Direction::Forward }); // index is set to 0 because we don't know the target yet
+				jump_stack.push((index, char_index, parse_position));
 			},
 			']' => {
-				if let Some((jump_id, ..)) = stack.pop() {
-					let index = instructions.len();
-					let id = id_counter;
-
-					// assign the correct target id to the matching '[' symbol.
+				if let Some((target_index, ..)) = jump_stack.pop() {
+					instructions.push(Jump{ index: target_index + 1, direction: Direction::Backward }); // target_index points to the instruction after the '['
+					// assign the correct index to the matching '[' symbol.
 					{
-						let target_index = map.get(&jump_id).unwrap();
-						let ref mut target = &mut instructions[*target_index];
-						if let Jump{ id: _, ref mut target_id, direction: _ } = target {
-							*target_id = id;
+						let current_index = instructions.len();
+						let ref mut target = &mut instructions[target_index];
+						if let Jump{ ref mut index, direction: _ } = target {
+							*index = current_index;
 						}
 					}
-
-					map.insert(id, index);
-					instructions.push(Jump{ id: id, target_id: jump_id, direction: Direction::Backward });
-					id_counter += 1;
 				}
 				else {
 					return Err(vec![format!("']' at line {}, col {} has no matching '['.", parse_position.line, char_index - parse_position.line_start)]);
@@ -76,18 +65,15 @@ pub fn parse<'a>(program: &'a str) -> Result<Program, Vec<String>> {
 		}
 	}
 
-	if stack.len() > 0 {
-		let mut errors = Vec::with_capacity(stack.len());
-		while let Some((_, char_index, position)) = stack.pop() {
+	if jump_stack.len() > 0 {
+		let mut errors = Vec::with_capacity(jump_stack.len());
+		while let Some((_, char_index, position)) = jump_stack.pop() {
 			errors.push(format!("'[' at line {}, col {} has no matching ']'.", position.line, char_index - parse_position.line_start));
 		}
 		return Err(errors);
 	}
 
-	Ok(Program {
-		instructions,
-		map
-	})
+	Ok(instructions)
 }
 
 #[cfg(test)]
@@ -112,8 +98,7 @@ mod tests {
 			Output
 		];
 
-		assert_eq!(program.instructions, expected_instructions);
-		assert_eq!(program.map.len(), 0);
+		assert_eq!(program, expected_instructions);
 	}
 
 	#[test]
@@ -124,13 +109,11 @@ mod tests {
 		let source = "[]";
 		let program = parse(source).unwrap();
 		let expected_instructions = vec![
-			Jump{ id: 1, target_id: 2, direction: Forward },
-			Jump{ id: 2, target_id: 1, direction: Backward }
+			Jump{ index: 2, direction: Forward },
+			Jump{ index: 1, direction: Backward }
 		];
 
-		assert_eq!(program.instructions, expected_instructions);
-		assert_eq!(program.map.get(&1), Some(&0));
-		assert_eq!(program.map.get(&2), Some(&1));
+		assert_eq!(program, expected_instructions);
 	}
 
 	#[test]
@@ -141,17 +124,13 @@ mod tests {
 		let source = "[[]]";
 		let program = parse(source).unwrap();
 		let expected_instructions = vec![
-			Jump{ id: 1, target_id: 4, direction: Forward },
-			Jump{ id: 2, target_id: 3, direction: Forward },
-			Jump{ id: 3, target_id: 2, direction: Backward },
-			Jump{ id: 4, target_id: 1, direction: Backward }
+			Jump{ index: 4, direction: Forward },
+			Jump{ index: 3, direction: Forward },
+			Jump{ index: 2, direction: Backward },
+			Jump{ index: 1, direction: Backward }
 		];
 
-		assert_eq!(program.instructions, expected_instructions);
-		assert_eq!(program.map.get(&1), Some(&0));
-		assert_eq!(program.map.get(&2), Some(&1));
-		assert_eq!(program.map.get(&3), Some(&2));
-		assert_eq!(program.map.get(&4), Some(&3));
+		assert_eq!(program, expected_instructions);
 	}
 
 	#[test]
@@ -167,8 +146,7 @@ mod tests {
 			AddData(1)
 		];
 
-		assert_eq!(program.instructions, expected_instructions);
-		assert_eq!(program.map.len(), 0);
+		assert_eq!(program, expected_instructions);
 	}
 
 	#[test]

@@ -1,8 +1,5 @@
 #![feature(nll)]
 
-use std::vec::Vec;
-use std::collections::HashMap;
-
 extern crate clap;
 use clap::{Arg, App};
 
@@ -12,14 +9,6 @@ use std::io::Read;
 mod parser;
 mod optimiser;
 mod interpreter;
-
-#[derive(Debug, Clone)]
-pub struct Program {
-	pub instructions: Vec<Instruction>,
-
-	/// Maps an id to an index in the instruction vector (for jumps)
-	pub map: HashMap<isize, usize>
-}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Direction {
@@ -33,7 +22,7 @@ pub enum Instruction {
 	AddData(isize),
 	Input,
 	Output,
-	Jump{ id: isize, target_id: isize, direction: Direction }
+	Jump{ index: usize, direction: Direction }
 }
 
 pub fn main() {
