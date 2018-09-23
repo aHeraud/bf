@@ -1,6 +1,7 @@
 use std::os::raw;
 use std::borrow::{Borrow, BorrowMut};
 use std::slice;
+use std::ffi::CStr;
 
 #[cfg(not(target_os="windows"))]
 use libc;
@@ -19,7 +20,13 @@ impl Buffer {
 	#[cfg(not(target_os="windows"))]
 	pub unsafe fn allocate(size: usize) -> Buffer {
 		let pointer = libc::memalign(PAGE_SIZE, size);
-		libc::mprotect(pointer, size, libc::PROT_EXEC | libc::PROT_READ | libc::PROT_WRITE);
+		libc::memset(pointer, 0, size);
+		let result = libc::mprotect(pointer, size, libc::PROT_EXEC | libc::PROT_READ | libc::PROT_WRITE);
+		if result != 0 {
+			let errno = unsafe { libc::__errno_location() as *const i32 };
+			let msg = CStr::from_ptr(libc::strerror(*errno));
+			panic!("call to libc::mprotect failed with error: {}", msg.to_string_lossy());
+		}
 		Buffer {
 			pointer: pointer as *mut raw::c_void,
 			size
