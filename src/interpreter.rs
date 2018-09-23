@@ -1,7 +1,5 @@
 use std::io::{stdin, Read};
-use super::{Instruction, Direction};
-
-const MEMORY_SIZE: usize = 30000;
+use super::{Instruction, Direction, MEMORY_SIZE};
 
 #[derive(Clone, Copy, Debug)]
 pub enum InterpreterError {
@@ -39,7 +37,6 @@ impl Interpreter {
 	pub fn step(&mut self) -> Result<bool, InterpreterError> {
 		use self::Instruction::*;
 
-		// TODO: should the data pointer wrap?
 		if let Some(ref instruction) = self.program.get(self.instruction_pointer as usize) {
 			match instruction {
 				AddPointer(val) => {
