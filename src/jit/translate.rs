@@ -3,7 +3,7 @@ use std::mem::transmute;
 use std::os::raw::c_void;
 
 use ::Instruction;
-use jit::io::output_char;
+use jit::io::{input_char, output_char};
 
 /// Layout for x86/x86_64
 /// Data Pointer: EAX/RAX
@@ -28,10 +28,12 @@ pub fn translate_to_native(program: Vec<Instruction>) -> Vec<u8> {
 
 	// set up pointers for io:
 	//     RBP[-8] = output_char
-	//     RBP[-16] = input_char (TODO: not implemented yet)
+	//     RBP[-16] = input_char
 	// assembly:
 	//     MOVABSQ RCX, output_char
 	//     MOV [RBP-8], RCX
+	//     MOVABSQ RCX, input_char
+	//     MOV [RBP-16], RCX
 	instructions.extend(vec![0x48, 0xB9]); // MOVABSQ RCX, ..
 	{
 		let proc_ptr: usize = unsafe { transmute(output_char as *const c_void) };
@@ -39,6 +41,13 @@ pub fn translate_to_native(program: Vec<Instruction>) -> Vec<u8> {
 		instructions.extend(immediate_value.iter()); // .., output_char
 	}
 	instructions.extend(vec![0x48, 0x89, 0x4D, 0xF8]); // MOV QWORD PTR [RBP - 8], RCX
+	instructions.extend(vec![0x48, 0xB9]); // MOVABSQ RCX, ..
+	{
+		let proc_ptr: usize = unsafe { transmute(input_char as *const c_void) };
+		let immediate_value: [u8; 8] = unsafe { transmute(proc_ptr) };
+		instructions.extend(immediate_value.iter());
+	}
+	instructions.extend(vec![0x48, 0x89, 0x4D, 0xF0]); // MOV QWORD PTR [RBP - 8], RCX
 
 	program.iter().for_each(|ins| {
 		match ins {
@@ -55,7 +64,17 @@ pub fn translate_to_native(program: Vec<Instruction>) -> Vec<u8> {
 				instructions.extend(vec![0x48, 0x01, 0xC8]) // ADD RAX, RCX
 			},
 			Input => {
-				panic!("Input instruction not yet implemented, try with the interpreter");
+				// PUSH RAX
+				// CALL [RBP - 16]
+				// MOV RCX, RAX
+				// POP RAX
+				// MOV BYTE PTR [RAX], CL
+				
+				instructions.extend(vec![0x50]); // PUSH RAX
+				instructions.extend(vec![0xFF, 0x55, 0xF0]); // CALL [RBP-16]
+				instructions.extend(vec![0x48, 0x89, 0xC1]); // MOV RCX, RAX
+				instructions.extend(vec![0x58]); // POP RAX
+				instructions.extend(vec![0x88, 0x08]) // MOV BYTE PTR [RAX], CL
 			},
 			Output => {
 				// MOVZX RDI, BYTE PTR [RAX]
