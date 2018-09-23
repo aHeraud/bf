@@ -47,7 +47,7 @@ pub fn translate_to_native(program: Vec<Instruction>) -> Vec<u8> {
 		let immediate_value: [u8; 8] = unsafe { transmute(proc_ptr) };
 		instructions.extend(immediate_value.iter());
 	}
-	instructions.extend(vec![0x48, 0x89, 0x4D, 0xF0]); // MOV QWORD PTR [RBP - 8], RCX
+	instructions.extend(vec![0x48, 0x89, 0x4D, 0xF0]); // MOV QWORD PTR [RBP - 16], RCX
 
 	program.iter().for_each(|ins| {
 		match ins {
@@ -78,18 +78,14 @@ pub fn translate_to_native(program: Vec<Instruction>) -> Vec<u8> {
 			},
 			Output => {
 				// MOVZX RDI, BYTE PTR [RAX]
-				// POP RCX
 				// PUSH RAX
 				// CALL [RBP - 8]
 				// POP RAX
-				// PUSH RCX
 
 				instructions.extend(vec![0x48, 0x0F, 0xB6, 0x38]); // MOVZX RDI, BYTE PTR [RAX]
-				instructions.extend(vec![0x59]); // POP RCX
 				instructions.extend(vec![0x50]); // PUSH RAX
 				instructions.extend(vec![0xFF, 0x55, 0xF8]); // CALL [RBP - 8]
 				instructions.extend(vec![0x58]); // POP RAX
-				instructions.extend(vec![0x51]); // PUSH RCX
 			},
 			Jump{ index: _, direction } => {
 				match direction {
