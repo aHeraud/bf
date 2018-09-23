@@ -14,6 +14,8 @@ use std::io::Read;
 mod parser;
 mod optimiser;
 mod interpreter;
+
+#[cfg(target_arch="x86_64")]
 mod jit;
 
 const MEMORY_SIZE: usize = 30000;
@@ -75,6 +77,10 @@ pub fn main() {
 		interpreter.run().unwrap();
 	}
 	else {
+		#[cfg(target_arch="x86_64")]
 		jit::execute(program);
+
+		#[cfg(not(target_arch="x86_64"))]
+		println!("Dynarec only implemented for x86_64, use the interpreter instead by passing the -i flag.");
 	}
 }

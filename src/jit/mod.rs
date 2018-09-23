@@ -1,7 +1,5 @@
 use std::mem::transmute;
 use std::borrow::BorrowMut;
-use std::os::raw::c_void;
-use std::boxed::Box;
 
 use ::{Instruction, MEMORY_SIZE};
 
@@ -23,14 +21,14 @@ fn set_up(program: Vec<Instruction>) -> (Buffer, Buffer) /* native_code, memory 
 	unsafe {
 		// we need to copy our program to a page that has been allocated with the execute flag, otherwise
 		// we will not be able to actually execute it.
-		let mut buffer = Buffer::allocate(native.len());
+		let mut buffer = Buffer::allocate(native.len(), true);
 		{
-			let mut slice: &mut [u8] = buffer.borrow_mut();
+			let slice: &mut [u8] = buffer.borrow_mut();
 			slice.copy_from_slice(&native);
 		}
 
-		// set up the data array that our program will use
-		let memory = Buffer::allocate(MEMORY_SIZE);
+		// set up the data array that our program will use (non executable)
+		let memory = Buffer::allocate(MEMORY_SIZE, false);
 		
 		(buffer, memory)
 	}

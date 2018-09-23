@@ -1,13 +1,9 @@
 use std::os::raw;
 use std::borrow::{Borrow, BorrowMut};
 use std::slice;
-use std::ffi::CStr;
 
 #[cfg(not(target_os="windows"))]
 use libc;
-
-#[cfg(target_os="windows")]
-use winapi;
 
 const PAGE_SIZE: usize = 0x1000;
 
@@ -18,12 +14,19 @@ pub struct Buffer {
 
 impl Buffer {
 	#[cfg(not(target_os="windows"))]
-	pub unsafe fn allocate(size: usize) -> Buffer {
+	pub unsafe fn allocate(size: usize, exec: bool) -> Buffer {
+		use std::ffi::CStr;
 		let pointer = libc::memalign(PAGE_SIZE, size);
 		libc::memset(pointer, 0, size);
+		let flags = if exec {
+			libc::PROT_EXEC | libc::PROT_READ | libc::PROT_WRITE
+		}
+		else {
+			libc::PROT_READ | libc::PROT_WRITE
+		};
 		let result = libc::mprotect(pointer, size, libc::PROT_EXEC | libc::PROT_READ | libc::PROT_WRITE);
 		if result != 0 {
-			let errno = unsafe { libc::__errno_location() as *const i32 };
+			let errno = libc::__errno_location() as *const i32;
 			let msg = CStr::from_ptr(libc::strerror(*errno));
 			panic!("call to libc::mprotect failed with error: {}", msg.to_string_lossy());
 		}
@@ -34,11 +37,17 @@ impl Buffer {
 	}
 
 	#[cfg(target_os="windows")]
-	pub unsafe fn allocate(size: usize) -> Buffer {
+	pub unsafe fn allocate(size: usize, exec: bool) -> Buffer {
 		use winapi::um::memoryapi::VirtualAlloc;
-		use winapi::um::winnt::{MEM_COMMIT, PAGE_EXECUTE_READWRITE};
+		use winapi::um::winnt::{MEM_COMMIT, PAGE_EXECUTE_READWRITE, PAGE_READWRITE};
 		use std::ptr::null_mut;
-		let pointer = VirtualAlloc(null_mut(), size, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+		let access = if exec {
+			PAGE_EXECUTE_READWRITE
+		}
+		else {
+			PAGE_READWRITE
+		};
+		let pointer = VirtualAlloc(null_mut(), size, MEM_COMMIT, access);
 		Buffer {
 			pointer,
 			size
