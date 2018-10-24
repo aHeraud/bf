@@ -1,6 +1,6 @@
-# brainfuck
+# bf
 
-A brainfuck interpreter + dynarec. Uses 8-bit wrapping memory cells, and a 30,000 byte memory array (no negative indices please!).
+An interpreter + dynarec for the brainfuck esoteric programming language. Uses 8-bit wrapping memory cells, and a 30,000 byte memory array (no negative indices please!).
 
 ## Usage
 
