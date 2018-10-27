@@ -1,10 +1,10 @@
-# brainfuck
+# bf
 
-A brainfuck interpreter + dynarec. Uses 8-bit wrapping memory cells, and a 30,000 byte memory array (no negative indices please!).
+An interpreter + recompiler for the [brainfuck esoteric programming language](https://esolangs.org/wiki/brainfuck). Uses 8-bit wrapping memory cells, and a 30,000 byte memory array (no negative indices please!).
 
 ## Usage
 
-To run a brainfuck program, just call `brainfuck <sourcefile>`. This will run the program by translating it into x86_64 assembly and running it as native code. To run a program using the interpreter instead, use `brainfuck -i <sourcefile>`.
+To run a program, just call `bf <sourcefile>`. This will run the program by translating it into x86_64 machine code and running it as native code. To run a program using the interpreter instead, use `bf -i <sourcefile>`.
 
 ## Example
 
@@ -14,8 +14,8 @@ To run a brainfuck program, just call `brainfuck <sourcefile>`. This will run th
 
 ### mandlebrot
 
-Interpreter: 6.129s
+Interpreter: 6.211s
 
-Dynarec: 1.077s
+Recompiler: 1.054s
 
 ![](images/mandlebrot_benchmark.png)
